@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Linq;
@@ -86,7 +87,7 @@ namespace Sharp.Inject.Bootstrap {
                             DiagnosticSeverity.Error,
                             true
                         ),
-                        userEntryPointSyntax.ReturnType.GetLocation()
+                        userEntryPointSyntax.Modifiers.First(mod => mod.IsKind(SyntaxKind.StaticKeyword)).GetLocation()
                     ));
                     return;
                 }
@@ -104,7 +105,7 @@ namespace Sharp.Inject.Bootstrap {
                             DiagnosticSeverity.Error,
                             true
                         ),
-                        userEntryPointSyntax.ReturnType.GetLocation()
+                        userEntryPointSyntax.ParameterList.GetLocation()
                     ));
                 }
 
