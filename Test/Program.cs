@@ -2,12 +2,11 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace Test {
-    class Program {
-        static unsafe void Main(string[] args) {
+    public static class Program {
+        public static async Task Main() {
             var process = Process.Start(new ProcessStartInfo() {
                 FileName = Path.GetFullPath("Dummy.exe"),
                 UseShellExecute = true,
@@ -15,10 +14,10 @@ namespace Test {
                 WindowStyle = ProcessWindowStyle.Normal
             });
             using var injector = new Injector(process);
-            var payload = injector.Inject("../../../../Payload/bin/Debug/net6.0/Payload.dll");
-            payload.InvokeEntryPoint(
-                string.Join(' ', Enumerable.Repeat("Test", 1000)),
-                "../../../../Payload/bin/Debug/net6.0/Payload.runtimeconfig.json"
+            using var payload = injector.Inject("Payload.dll");
+            await payload.InvokeEntryPoint(
+                "Payload.runtimeconfig.json",
+                "Payload.dll"
             );
             
             Console.Read();

@@ -1,11 +1,14 @@
 ﻿using System;
-using Sharp.Inject.Bootstrap;
+// using Capnp.Rpc;
+/// using Sharp.Inject.Bootstrap;
 
 namespace Payload {
     public static class Program {
-        [EntryPoint]
+        // [EntryPoint]
         public static unsafe void EntryPoint(string str) {
-            Console.WriteLine(str);
         }
+
+
+        
     }
 }

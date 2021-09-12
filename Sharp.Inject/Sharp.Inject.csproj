@@ -3,46 +3,24 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-  </PropertyGroup>
-
+  
   <ItemGroup>
-    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.1.527-beta">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.Windows.SDK.Win32Metadata" Version="10.2.118-preview" />
+    <PackageReference Include="Capnp.Net.Runtime" Version="1.3.118" />
     <PackageReference Include="Reloaded.Injector" Version="1.2.4" />
-    <PackageReference Include="SharedMemory" Version="2.2.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <NativeLibs Remove="InjectedModule.cs" />
+    <ProjectReference Include="..\Sharp.Inject.Bootstrap.Native\Sharp.Inject.Bootstrap.Native.msbuildproj" />
+    <ProjectReference Include="..\Sharp.Inject.Rpc\Sharp.Inject.Rpc.csproj" />
   </ItemGroup>
 
+  <!-- Sharp.Inject.Bootstrap.Native -->
   <ItemGroup>
-    <NativeLibs Remove="NativeMethods.txt" />
+    <Content Include="..\Sharp.Inject.Bootstrap.Native\target\$(Configuration)\Sharp.Inject.Bootstrap.Native.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="NativeMethods.json" />
-    <None Remove="NativeMethods.txt" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <NativeLibs Remove="NativeMethods.json" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <AdditionalFiles Include="NativeMethods.json" />
-    <AdditionalFiles Include="NativeMethods.txt" />
-  </ItemGroup>
-
+  
 </Project>

@@ -1,4 +1,0 @@
-VirtualAllocEx
-WriteProcessMemory
-VirtualFreeEx
-ReadProcessMemory

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <!-- Project custom -->
+    <PropertyGroup>
+        <AssemblyName>Sharp.Inject.Bootstrap.Native</AssemblyName>
+        <OutputType>Library</OutputType>
+    </PropertyGroup>
+	
+    <Target Name="MoveAndRename" AfterTargets="Build">
+        <ItemGroup>
+            <RenameFile Include="target\$(Configuration)\sharp_inject_bootstrap_native.*" />
+        </ItemGroup>
+        <Move SourceFiles="@(RenameFile)" DestinationFiles="@(RenameFile -&gt; Replace('sharp_inject_bootstrap_native', 'Sharp.Inject.Bootstrap.Native'))" />
+    </Target>
+	
+    <!-- Rust general -->
+    <PropertyGroup>
+        <OutputPath>target\$(Configuration)\</OutputPath>
+        <OutDir>target\$(Configuration)\</OutDir>
+        <Configurations>Debug;Release</Configurations>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile Include="**\*.rs" Exclude="target\**\*.rs" />
+        <Content Include="**\*.rs" Exclude="target\**\*.rs" />
+        <Content Include="Cargo.toml" />
+    </ItemGroup>
+    <Target Name="Build" Inputs="@(Compile);Cargo.toml;Cargo.lock" Outputs="target\$(Configuration)\*.*">
+        <Exec Command="cargo build" Condition=" '$(Configuration)' == 'Debug' " />
+        <Exec Command="cargo build --release" Condition=" '$(Configuration)' == 'Release' " />
+    </Target>
+    <Target Name="Clean">
+        <!-- Exec Command="cargo clean" / -->
+    </Target>
+    <Target Name="Run">
+        <Exec Command="cargo run" Condition=" '$(Configuration)' == 'Debug' " />
+        <Exec Command="cargo run --release" Condition=" '$(Configuration)' == 'Release' " />
+    </Target>
+    <Target Name="Rebuild" DependsOnTargets="Clean;Build" />
+	
+    <!-- Make VS happy -->
+    <Target Name="ResolveProjectReferences" />
+    <Target Name="ResolveAssemblyReferences" />
+    <Target Name="CompileDesignTime" />
+    <Target Name="ResolveComReferencesDesignTime" />
+    <Target Name="ResolveProjectReferencesDesignTime" />
+    <Target Name="ResolveAssemblyReferencesDesignTime" />
+    <Import Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\Managed\Microsoft.Managed.DesignTime.targets" Condition="Exists('$(MSBuildExtensionsPath)\Microsoft\VisualStudio\Managed\Microsoft.Managed.DesignTime.targets')" />
+</Project>
