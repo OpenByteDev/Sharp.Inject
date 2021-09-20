@@ -2,13 +2,16 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>10.0</LangVersion>
     <Nullable>Enable</Nullable>
+    
     <GenerateRuntimeConfigurationFiles>True</GenerateRuntimeConfigurationFiles>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Sharp.Inject.Bootstrap\Sharp.Inject.Bootstrap.csproj" />
+    <ProjectReference Include="..\Test.Shared\Test.Shared.csproj" />
   </ItemGroup>
 
   <!-- Copy runtimeconfig.json and deps.json when referenced as a dependency (used in Test) -->

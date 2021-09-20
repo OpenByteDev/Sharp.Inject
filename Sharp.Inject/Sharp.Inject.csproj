@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <Nullable>enable</Nullable>
+    <LangVersion>10.0</LangVersion>
+    <Nullable>Enable</Nullable>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
   
@@ -12,15 +13,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Sharp.Inject.Bootstrap.Native\Sharp.Inject.Bootstrap.Native.msbuildproj" />
+    <ProjectReference Include="..\Sharp.Inject.Bootstrap.Native\Sharp.Inject.Bootstrap.Native.msbuildproj">
+      <Private></Private>
+    </ProjectReference>
     <ProjectReference Include="..\Sharp.Inject.Rpc\Sharp.Inject.Rpc.csproj" />
   </ItemGroup>
 
   <!-- Sharp.Inject.Bootstrap.Native -->
   <ItemGroup>
-    <Content Include="..\Sharp.Inject.Bootstrap.Native\target\$(Configuration)\Sharp.Inject.Bootstrap.Native.dll">
+    <None Include="..\Sharp.Inject.Bootstrap.Native\target\$(Configuration)\Sharp.Inject.Bootstrap.Native.dll" Pack="true" PackagePath="build">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    </None>
   </ItemGroup>
   
 </Project>

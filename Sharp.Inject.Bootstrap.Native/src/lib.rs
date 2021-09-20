@@ -4,7 +4,7 @@ use netcorehost::{
     pdcstring::PdCString,
 };
 use std::{convert::TryInto, net::{Ipv4Addr, SocketAddrV4}, panic::{self, AssertUnwindSafe}, str::FromStr};
-use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
+use capnp_rpc::{RpcSystem, rpc_twoparty_capnp, twoparty};
 use futures::FutureExt;
 use futures::AsyncReadExt;
 
@@ -16,25 +16,25 @@ enum BootstrapResult {
     FatalError = 3,
 }
 
-pub mod sharp_inject_capnp {
-    include!(concat!(env!("OUT_DIR"), "/sharp_inject_capnp.rs"));
+pub mod sharp_inject_native_capnp {
+    include!(concat!(env!("OUT_DIR"), "/sharp_inject_native_capnp.rs"));
 }
 
 #[no_mangle]
 extern "system" fn bootstrap(port: i64) -> BootstrapResult {
-    match panic::catch_unwind(|| bootstrap_real(port.try_into().unwrap())) {
-        Ok(Ok(Ok(_))) => BootstrapResult::Success,
-        Ok(Ok(Err(_))) => {
-            BootstrapResult::BootstrapError
-        },
-        Ok(Err(_)) | Err(_) => {
+    match panic::catch_unwind(|| bootstrap_real(port.try_into().unwrap())).unwrap_or_else(|e| Err(BootstrapError::Panic(e))) {
+        Ok(_) => BootstrapResult::Success,
+        Err(BootstrapError::Capnp(_)) => {
             BootstrapResult::FatalError
+        }
+        Err(_) => {
+            BootstrapResult::BootstrapError
         }
     }
 }
 
 #[tokio::main]
-async fn bootstrap_real(port: u16) -> Result<Result<(), Box<dyn std::error::Error>>, Box<dyn std::any::Any + std::marker::Send>> {
+async fn bootstrap_real(port: u16) -> Result<(), BootstrapError> {
     tokio::task::LocalSet::new().run_until(async move {
         let address = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
         let stream = tokio::net::TcpStream::connect(address).await.unwrap();
@@ -48,7 +48,7 @@ async fn bootstrap_real(port: u16) -> Result<Result<(), Box<dyn std::error::Erro
             Default::default(),
         ));
         let mut rpc_system = RpcSystem::new(rpc_network, None);
-        let client: sharp_inject_capnp::injector_service::Client =
+        let client: sharp_inject_native_capnp::native_injector_service::Client =
             rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
         tokio::task::spawn_local(Box::pin(rpc_system.map(|_| ())));
 
@@ -63,19 +63,17 @@ async fn bootstrap_real(port: u16) -> Result<Result<(), Box<dyn std::error::Erro
                 payload_info.get_runtime_config_path()?,
                 payload_info.get_assembly_path()?
             ).map(|_| ())
-        }).catch_unwind().await;
+        }).catch_unwind().await.unwrap_or_else(|e| Err(BootstrapError::Panic(e)));
 
-        match &result {
-            Ok(Ok(_)) => {},
-            Ok(Err(err)) => {
-                let request = client.notify_error_request();
-                let error_info = request.get().get_error()?.init_native();
-                if err.downcast_ref::<netcorehost::error::Error>()
-                let _response = request.send().promise.await.unwrap();
-            },
-            Err(panic) => {
-
+        if let Err(error) = &result {
+            let mut request = client.set_native_bootstrap_error_request();
+            match error {
+                BootstrapError::Hosting(hosting_error) => request.get().get_error_info()?.set_hosting(hosting_error.to_string().as_str()),
+                BootstrapError::Capnp(capnp_error) => request.get().get_error_info()?.set_other(capnp_error.to_string().as_str()),
+                BootstrapError::Other(other_error) => request.get().get_error_info()?.set_other(other_error.to_string().as_str()),
+                BootstrapError::Panic(panic_error) => request.get().get_error_info()?.set_panic(panic_error.downcast_ref::<&str>().unwrap_or(&"Unknown fatal error.")),
             }
+            request.send().promise.await?;
         }
 
         result
@@ -83,7 +81,7 @@ async fn bootstrap_real(port: u16) -> Result<Result<(), Box<dyn std::error::Erro
 }
 
 
-fn host_managed_assembly(port: u16, runtime_config_path: &str, assembly_path: &str) -> Result<i32, Box<dyn std::error::Error>> {
+fn host_managed_assembly<TArg>(port: TArg, runtime_config_path: &str, assembly_path: &str) -> Result<i32, BootstrapError> {
     // locate and load hostfxr
     let hostfxr = nethost::load_hostfxr()?;
 
@@ -100,13 +98,54 @@ fn host_managed_assembly(port: u16, runtime_config_path: &str, assembly_path: &s
             pdcstr!("ManagedEntryPoint"),
         )?;
     let managed_entry_point =
-        unsafe { cast_managed_fn!(managed_entry_point, fn(i32) -> i32) };
+        unsafe { cast_managed_fn!(managed_entry_point, fn(TArg) -> i32) };
 
-
-    panic!("Test panic");
     // call entry point
-    let result = managed_entry_point(port as i32);
+    let result = managed_entry_point(port);
 
     Ok(result)
 }
 
+#[derive(Debug)]
+enum BootstrapError {
+    Hosting(netcorehost::error::Error),
+    Capnp(capnp::Error),
+    Other(Box<dyn std::error::Error>),
+    Panic(Box<dyn std::any::Any + std::marker::Send>),
+}
+
+impl From<netcorehost::error::Error> for BootstrapError {
+    fn from(error: netcorehost::error::Error) -> Self {
+        BootstrapError::Hosting(error)
+    }
+}
+
+impl From<netcorehost::pdcstring::NulError> for BootstrapError {
+    fn from(error: netcorehost::pdcstring::NulError) -> Self {
+        BootstrapError::Other(error.into())
+    }
+}
+
+impl From<capnp::Error> for BootstrapError {
+    fn from(error: capnp::Error) -> Self {
+        BootstrapError::Capnp(error)
+    }
+}
+
+impl From<netcorehost::hostfxr::GetFunctionPointerError> for BootstrapError {
+    fn from(error: netcorehost::hostfxr::GetFunctionPointerError) -> Self {
+        Self::from(netcorehost::error::Error::from(error))
+    }
+}
+
+impl From<netcorehost::error::HostingError> for BootstrapError {
+    fn from(error: netcorehost::error::HostingError) -> Self {
+        Self::from(netcorehost::error::Error::from(error))
+    }
+}
+
+impl From<netcorehost::nethost::LoadHostfxrError> for BootstrapError {
+    fn from(error: netcorehost::nethost::LoadHostfxrError) -> Self {
+        Self::from(netcorehost::error::Error::from(error))
+    }
+}
